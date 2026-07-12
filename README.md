@@ -57,7 +57,13 @@ python3 devserver.py [8080]     # ローカル起動（/admin/ は認証なし�
 # 修正 → ブラウザ確認 → 本番反映:
 tools/deploy.sh <さくらのアカウント名> <公開ディレクトリ名>
 # ~/.ssh/config のエイリアスで接続する場合は SSH_DEST=<エイリアス> を前置
+# 反映後にコミットして GitHub へ:
+git add -A && git commit -m "..." && git push
 ```
+
+実データ（data/・backup/・www/img/）と環境設定（localconfig.py）は
+.gitignore 済み。コミット時に混入しないこと。本番のURL・アカウント名などの
+環境固有情報もリポジトリには書かない方針。
 
 - ローカルデータは `./data/`・`./www/img/`（消せば初期化）
 - 画像縮小はローカル Pillow／本番 ImageMagick（自動判別）
