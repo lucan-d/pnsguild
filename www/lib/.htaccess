@@ -1,0 +1,2 @@
+# ライブラリはWebから直接アクセス不可にする
+Require all denied

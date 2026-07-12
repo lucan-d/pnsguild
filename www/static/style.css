@@ -1,0 +1,219 @@
+/* スマホ基準のレスポンシブ。管理画面は body.wide でPC幅に広げる */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+  background: #f2f4f8;
+  color: #2a2f3a;
+  line-height: 1.6;
+}
+header {
+  background: #2c3e66;
+  padding: 10px 16px;
+}
+header a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 14px 40px;
+}
+body.wide main { max-width: 1100px; }
+footer {
+  text-align: center;
+  color: #98a0ae;
+  font-size: 12px;
+  padding: 16px 0 24px;
+}
+h1 { font-size: 20px; margin: 10px 0 14px; }
+h2 { font-size: 15px; margin: 22px 0 8px; color: #4a5468;
+     border-left: 4px solid #2c3e66; padding-left: 8px; }
+a { color: #2456b0; }
+.back { display: inline-block; font-size: 13px; margin-top: 4px; text-decoration: none; }
+.sub { color: #8b93a2; font-size: 12px; }
+.empty { color: #98a0ae; font-size: 14px; }
+.hint { color: #8b93a2; font-size: 12px; }
+
+/* 通知・エラー */
+.notice {
+  background: #e6f4e8; border: 1px solid #9fd3a8; color: #22662e;
+  border-radius: 8px; padding: 8px 12px; font-size: 14px;
+}
+.errors {
+  background: #fdecec; border: 1px solid #f0b6b6; color: #a33;
+  border-radius: 8px; padding: 8px 12px 8px 28px; font-size: 14px;
+}
+
+/* ボタン */
+.btn {
+  display: inline-block; padding: 8px 16px; border-radius: 8px;
+  border: 1px solid #c3cad6; background: #fff; color: #2a2f3a;
+  text-decoration: none; font-size: 14px; cursor: pointer;
+}
+.btn.primary { background: #2c3e66; border-color: #2c3e66; color: #fff; }
+.btn.danger { background: #fff; border-color: #d66; color: #c33; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+
+/* フォーム */
+form.stack label { display: block; margin: 12px 0; font-size: 13px; color: #4a5468; }
+form.stack input[type="text"], form.stack input[type="password"],
+form.stack select, form.stack textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 9px 10px;
+  border: 1px solid #c3cad6; border-radius: 8px; font-size: 16px;
+  background: #fff;
+}
+form.stack input[type="file"] { display: block; margin-top: 6px; font-size: 14px; }
+form.stack button { margin-top: 8px; width: 100%; }
+body.wide form.stack button { width: auto; }
+form.inline input { padding: 8px 10px; border: 1px solid #c3cad6; border-radius: 8px; }
+form.jump { display: flex; gap: 8px; margin: 14px 0; }
+form.jump input { flex: 1; padding: 10px; border: 1px solid #c3cad6;
+  border-radius: 8px; font-size: 16px; }
+.radios { margin: 8px 0; }
+label.radio { display: block; padding: 6px 2px; font-size: 15px; }
+
+/* サーバー一覧カード */
+ul.cards { list-style: none; margin: 8px 0; padding: 0; }
+ul.cards li { margin: 8px 0; }
+a.card-link {
+  display: block; background: #fff; border-radius: 10px; padding: 12px 14px;
+  text-decoration: none; font-weight: 700; color: #2a2f3a;
+  box-shadow: 0 1px 3px rgba(20,30,60,.08);
+}
+
+/* キャラクター一覧 */
+.charlist { margin-top: 8px; }
+a.char {
+  display: flex; gap: 12px; align-items: center;
+  background: #fff; border-radius: 10px; padding: 10px 12px; margin: 8px 0;
+  text-decoration: none; color: #2a2f3a;
+  box-shadow: 0 1px 3px rgba(20,30,60,.08);
+}
+a.char img, .noimg {
+  width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none;
+}
+.noimg {
+  background: #d7dce6; color: #fff; display: flex; align-items: center;
+  justify-content: center; font-size: 24px; font-weight: 700;
+}
+.noimg.big { width: 120px; height: 120px; border-radius: 14px; font-size: 48px; }
+.char-name { font-weight: 700; }
+.char-sub { font-size: 13px; color: #6b7383; }
+.char-nums { font-size: 12px; color: #8b93a2; }
+
+/* バッジ・タグ */
+.badge {
+  display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
+  color: #fff; vertical-align: middle;
+}
+.badge-Fighter { background: #c05043; }
+.badge-Shooter { background: #3e8a52; }
+.badge-Rider { background: #3a6dbf; }
+.tags { margin: 8px 0; }
+.tag {
+  display: inline-block; font-size: 12px; padding: 3px 10px; margin: 2px 4px 2px 0;
+  border-radius: 999px; background: #e3e8f0; color: #4a5468; text-decoration: none;
+}
+.tag.on { background: #2c3e66; color: #fff; }
+.tag.clear { background: #f5d9d9; color: #a33; }
+.tag.closed { background: #e0e0e0; color: #777; }
+.tag.open { background: #e6f4e8; color: #22662e; }
+
+/* プロフィール詳細 */
+.profile-wrap { text-align: center; margin: 12px 0; }
+img.profile {
+  max-width: 100%; max-height: 320px; border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(20,30,60,.15);
+}
+table.kv {
+  width: 100%; background: #fff; border-radius: 10px; border-collapse: collapse;
+  overflow: hidden; box-shadow: 0 1px 3px rgba(20,30,60,.08); font-size: 14px;
+}
+table.kv th, table.kv td { padding: 9px 12px; border-bottom: 1px solid #eef1f6; }
+table.kv th { text-align: left; color: #6b7383; width: 38%; font-weight: 500;
+  vertical-align: top; }
+.ownerbar { display: flex; gap: 8px; margin: 20px 0 4px; }
+.ownerbar .btn { flex: 1; text-align: center; }
+
+/* アルバム */
+.album { display: flex; flex-wrap: wrap; gap: 8px; }
+.album a.ph img {
+  width: 104px; height: 104px; object-fit: cover; border-radius: 8px; display: block;
+}
+.ph-item { text-align: center; font-size: 12px; }
+.ph-item form { margin-top: 4px; }
+.cap { color: #c05043; font-weight: 700; font-size: 12px; white-space: nowrap; }
+h3.shift-slot { font-size: 14px; margin: 14px 0 6px; color: #2c3e66; }
+table.shift-table { margin-bottom: 10px; }
+.shift-conf { max-width: 420px; margin: 8px 0; }
+.ev-head { font-size: 14px; }
+.ev-date { color: #6b7383; font-size: 13px; margin-right: 4px; }
+ul.events { list-style: none; margin: 8px 0; padding: 0; }
+ul.events li { margin: 6px 0; }
+ul.events a {
+  display: block; background: #fff; border-radius: 10px; padding: 10px 12px;
+  text-decoration: none; color: #2a2f3a; font-size: 14px;
+  box-shadow: 0 1px 3px rgba(20,30,60,.08);
+}
+
+/* 発表シフト */
+.tabs { display: flex; gap: 6px; margin: 12px 0 4px; }
+.tabs a {
+  flex: 1; text-align: center; padding: 9px 4px; border-radius: 8px;
+  background: #e3e8f0; color: #4a5468; text-decoration: none;
+  font-size: 14px; font-weight: 700;
+}
+.tabs a.on { background: #2c3e66; color: #fff; }
+.starget {
+  background: #fff; border-radius: 10px; padding: 10px 12px; margin: 10px 0;
+  box-shadow: 0 1px 3px rgba(20,30,60,.08);
+}
+.starget h4 { margin: 0 0 4px; font-size: 14px; }
+.over { color: #c33; font-weight: 700; font-size: 12px; }
+.subcap { color: #2b7a8b; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.prow { padding: 7px 2px; border-top: 1px solid #eef1f6; font-size: 14px; }
+details.prow summary { cursor: pointer; }
+details.prow[open] { background: #f4f7fc; border-radius: 6px; }
+.acts { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 2px 4px; }
+.acts form { display: inline; margin: 0; }
+
+/* 報酬分配リスト */
+table.rwlist td { vertical-align: top; }
+tr.rw-red td { background: #f6caca; }
+tr.rw-blue td { background: #cfe0f6; }
+tr.rw-green td { background: #d5efd8; }
+tr.rw-yellow td { background: #faf3cd; }
+tr.rw-off td { color: #aab; text-decoration: line-through; }
+tr.rw-off td .attlabel, tr.rw-off td form { text-decoration: none; }
+details.rwname summary { cursor: pointer; }
+.attlabel { white-space: nowrap; font-size: 13px; }
+
+/* 避難所マップ */
+.mapbox { margin: 12px 0; }
+.mapbox summary { display: inline-block; }
+.mapwrap { text-align: center; padding: 10px 0; }
+svg.hexmap {
+  width: min(340px, 94%); height: auto; border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(20,30,60,.2);
+}
+svg.hexmap .mapbg { fill: #26323c; }
+svg.hexmap .grid line { stroke: #3d4f5e; stroke-width: 1.5; }
+svg.hexmap .pt { fill: #ff5252; stroke: #fff; stroke-width: 4; }
+svg.hexmap .ptlabel { fill: #fff; font-size: 42px; font-weight: 700;
+  paint-order: stroke; stroke: #26323c; stroke-width: 6; }
+
+/* 管理画面のテーブル */
+table.list {
+  width: 100%; background: #fff; border-collapse: collapse; font-size: 13px;
+  border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(20,30,60,.08);
+}
+table.list th, table.list td { padding: 8px 10px; border-bottom: 1px solid #eef1f6;
+  text-align: left; }
+table.list th { background: #eef1f6; color: #4a5468; }
+table.list td.num { text-align: right; font-variant-numeric: tabular-nums; }
+img.mini { width: 32px; height: 32px; border-radius: 6px; object-fit: cover;
+  display: block; }
+.admin-form { max-width: 560px; }

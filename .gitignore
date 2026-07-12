@@ -1,0 +1,14 @@
+# ローカルの実データ・本番ミラー（プレイヤー情報・署名鍵・htpasswdを含む）
+/data/
+/backup/
+/www/img/
+
+# 設置環境ごとの設定（サーバーの実パスを含む）
+www/lib/localconfig.py
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude Code のローカル設定
+.claude/

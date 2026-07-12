@@ -1,0 +1,12 @@
+# Basic認証。AuthUserFile は設置時に実パスへ書き換えること。
+# .htpasswd は公開領域の外（例: ~/pnsg-data/.htpasswd）に置く。
+AuthType Basic
+AuthName "PNSG Admin"
+AuthUserFile /home/YOUR_ACCOUNT/pnsg-data/.htpasswd
+Require valid-user
+
+DirectoryIndex admin.cgi
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.+)$ admin.cgi/$1 [L,QSA]

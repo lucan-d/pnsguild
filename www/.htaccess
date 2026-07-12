@@ -1,0 +1,7 @@
+DirectoryIndex index.cgi
+
+RewriteEngine On
+# /1234/... 形式をディスパッチャに渡す（実在ファイル・ディレクトリは除外）
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(\d{4})(/.*)?$ index.cgi/$1$2 [L,QSA]
