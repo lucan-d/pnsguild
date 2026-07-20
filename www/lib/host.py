@@ -6,13 +6,13 @@
 """
 import time
 
-from lib import auth, config, evutil, shift, store, throttle, tpl
+from lib import auth, config, evutil, i18n, shift, store, throttle, tpl
 from lib.tpl import h, url
 from lib.web import html_page, not_found, redirect
 
-REWARD_COLORS = (("red", "赤", 1), ("blue", "青", 5),
-                 ("green", "緑", 20), ("yellow", "薄黄", 74))
-SLOT_LABELS = {"first": "前半", "second": "後半", "all": "全体"}
+REWARD_COLORS = (("red", "color_red", 1), ("blue", "color_blue", 5),
+                 ("green", "color_green", 20), ("yellow", "color_yellow", 74))
+SLOT_LABELS = {"first": "slot_first", "second": "slot_second", "all": "slot_all"}
 
 
 def _now():
@@ -35,16 +35,16 @@ def _host_sess(req, srv, eid):
 def _login_page(srv, ev, tpath, error=""):
     back = url("/%s/e/%s" % (srv, ev["id"]))
     if not ev.get("host_hash"):
-        return html_page("ホスト認証",
-                         "<p>このイベントにはホストパスワードが設定されていません。"
-                         "管理者に設定を依頼してください。</p>", back=back)
+        return html_page(i18n.t("title_host_auth"),
+                         "<p>%s</p>" % i18n.t("err_no_host_password"), back=back)
     body = tpl.errors_html([error]) + """
-<p>「%s」のホスト操作にはホストパスワードが必要です。</p>
+<p>%s</p>
 <form method="post" action="%s" class="stack">
-<input type="password" name="host_pass" placeholder="ホストパスワード" required>
-<button class="btn primary">認証する</button>
-</form>""" % (h(ev["title"]), h(url(tpath)))
-    return html_page("ホスト認証", body, back=back)
+<input type="password" name="host_pass" placeholder="%s" required>
+<button class="btn primary">%s</button>
+</form>""" % (i18n.t("host_pass_required_for", title=h(ev["title"])), h(url(tpath)),
+              i18n.t("placeholder_host_pass"), i18n.t("btn_login"))
+    return html_page(i18n.t("title_host_auth"), body, back=back)
 
 
 def _handle_host_login(req, srv, ev, tpath):
@@ -63,7 +63,7 @@ def _handle_host_login(req, srv, ev, tpath):
         return resp
     throttle.note_event_fail(srv, ev["id"],
                              req.environ.get("REMOTE_ADDR"))
-    return _login_page(srv, ev, tpath, "パスワードが違います")
+    return _login_page(srv, ev, tpath, i18n.t("err_host_pass_wrong"))
 
 
 def _csrf_ok(req, sess):
@@ -75,7 +75,7 @@ def _csrf_ok(req, sess):
 def build_published(ev, byid):
     slots = {}
     for label, buckets, _reserves in shift.tables(ev, byid):
-        key = {"前半": "first", "後半": "second", None: "all"}[label]
+        key = label or "all"
         slots[key] = {"targets": [
             {"name": b["name"], "troop": b["troop"],
              "members": [c["id"] for c in b["members"]],
@@ -99,7 +99,7 @@ def shift_page(req, srv, eid):
         if r:
             return r
         if not _csrf_ok(req, sess):
-            return _login_page(srv, ev, tpath, "セッションの有効期限が切れました。もう一度認証してください")
+            return _login_page(srv, ev, tpath, i18n.t("err_host_session_expired"))
         return _shift_action(req, srv, eid, byid, tpath)
 
     if req.q("login") and not sess:
@@ -108,23 +108,29 @@ def shift_page(req, srv, eid):
     back = url("/%s/e/%s" % (srv, eid))
     if not ev.get("published"):
         if not evutil.is_closed(ev):
-            body = ('<p>発表シフトは受付締切後に作成できます。</p>'
-                    '<p class="hint">受付締切: %s</p>') % h(evutil.deadline_str(ev) or "未設定（手動締切待ち）")
-            return html_page("発表シフト - %s" % ev["title"], body, back=back)
+            body = ('<p>%s</p>'
+                    '<p class="hint">%s</p>') % (
+                i18n.t("shift_not_ready"),
+                i18n.t("deadline_label",
+                       date=h(evutil.deadline_str(ev) or i18n.t("deadline_unset"))))
+            return html_page(i18n.t("title_published_shift", title=ev["title"]),
+                             body, back=back)
         if sess:
             body = """
-<p>受付は締め切られています。現在の予想シフトを元に発表シフトを作成します。
-作成後は参加登録の変動に影響されず、手動で調整できます。</p>
+<p>%s</p>
 <form method="post" action="%s">
 <input type="hidden" name="csrf" value="%s">
 <input type="hidden" name="act" value="create">
-<button class="btn primary">発表シフトを作成する</button>
-</form>""" % (h(url(tpath)), h(auth.csrf_token(sess)))
+<button class="btn primary">%s</button>
+</form>""" % (i18n.t("shift_create_hint"), h(url(tpath)),
+              h(auth.csrf_token(sess)), i18n.t("btn_create_shift"))
         else:
-            body = ('<p>発表シフトはまだ作成されていません。</p>'
-                    '<p><a class="btn" href="%s?login=1">ホストとして作成する</a></p>'
-                    % h(url(tpath)))
-        return html_page("発表シフト - %s" % ev["title"], body, back=back)
+            body = ('<p>%s</p>'
+                    '<p><a class="btn" href="%s?login=1">%s</a></p>'
+                    % (i18n.t("shift_not_created_yet"), h(url(tpath)),
+                       i18n.t("link_create_as_host")))
+        return html_page(i18n.t("title_published_shift", title=ev["title"]),
+                         body, back=back)
 
     return _render_shift(req, srv, ev, byid, sess, tpath)
 
@@ -195,13 +201,13 @@ def _shift_action(req, srv, eid, byid, tpath):
 
 def _member_label(t, cid, byid):
     c = byid.get(cid)
-    name = h(c["name"]) if c else "（削除済み）"
+    name = h(c["name"]) if c else i18n.t("deleted_char")
     label = '%s<span class="sub">(%s)</span>' % (
         name, tpl.fmt_num(_march(c or {})))
     if t.get("captain") == cid:
-        label += '<span class="cap">（キャプテン）</span>'
+        label += '<span class="cap">%s</span>' % i18n.t("label_captain")
     if t.get("sub") == cid:
-        label += '<span class="subcap">（サブ）</span>'
+        label += '<span class="subcap">%s</span>' % i18n.t("label_sub")
     return label
 
 
@@ -226,7 +232,7 @@ def _render_shift(req, srv, ev, byid, sess, tpath):
         for k in keys:
             cls = "on" if k == cur else ""
             tabs += '<a class="%s" href="%s?t=%s">%s</a>' % (
-                cls, action_url, h(k), h(SLOT_LABELS[k]))
+                cls, action_url, h(k), i18n.t(SLOT_LABELS[k]))
         tabs += "</div>"
 
     placed = set()
@@ -243,7 +249,8 @@ def _render_shift(req, srv, ev, byid, sess, tpath):
         total = sum(_march(byid.get(cid) or {}) for cid in t["members"])
         capc = byid.get(t.get("captain") or "")
         cap = (_march(capc) + (capc.get("gather_size") or 0)) if capc else 0
-        over = ' <span class="over">（上限超過）</span>' if capc and total > cap else ""
+        over = (' <span class="over">%s</span>' % i18n.t("over_cap")
+                if capc and total > cap else "")
         rows = ""
         for cid in t["members"]:
             label = _member_label(t, cid, byid)
@@ -254,41 +261,45 @@ def _render_shift(req, srv, ev, byid, sess, tpath):
             common = _hidden(csrf, slot=cur, cid=cid, target=str(ti))
             acts += ('<form method="post" action="%s">%s'
                      '<input type="hidden" name="act" value="captain">'
-                     '<button class="btn small">キャプテンに任命</button></form>'
-                     ) % (action_url, common)
+                     '<button class="btn small">%s</button></form>'
+                     ) % (action_url, common, i18n.t("btn_captain"))
             acts += ('<form method="post" action="%s">%s'
                      '<input type="hidden" name="act" value="sub">'
-                     '<button class="btn small">サブに任命</button></form>'
-                     ) % (action_url, common)
+                     '<button class="btn small">%s</button></form>'
+                     ) % (action_url, common, i18n.t("btn_sub"))
             for oi, ot in enumerate(targets):
                 if oi == ti:
                     continue
                 acts += ('<form method="post" action="%s">%s'
                          '<input type="hidden" name="act" value="move">'
                          '<input type="hidden" name="to" value="%d">'
-                         '<button class="btn small">%sへ移動</button></form>'
+                         '<button class="btn small">%s</button></form>'
                          ) % (action_url, _hidden(csrf, slot=cur, cid=cid),
-                              oi, h(ot["name"]))
+                              oi, i18n.t("btn_move_to", name=h(ot["name"])))
             acts += ('<form method="post" action="%s">%s'
                      '<input type="hidden" name="act" value="remove">'
-                     '<button class="btn small danger">リストから外す</button></form>'
-                     ) % (action_url, _hidden(csrf, slot=cur, cid=cid))
+                     '<button class="btn small danger">%s</button></form>'
+                     ) % (action_url, _hidden(csrf, slot=cur, cid=cid),
+                          i18n.t("btn_remove_from_list"))
             rows += ('<details class="prow"><summary>%s</summary>'
                      '<div class="acts">%s</div></details>') % (label, acts)
         if not rows:
-            rows = '<div class="prow empty">未配置</div>'
+            rows = '<div class="prow empty">%s</div>' % i18n.t("unplaced")
         body += """<div class="starget">
-<h4>%s %s <span class="sub">%d人 ／ 合計 %s ／ 上限 %s%s</span></h4>
-%s</div>""" % (h(t["name"]), tpl.troop_badge(t["troop"]), len(t["members"]),
-               tpl.fmt_num(total), tpl.fmt_num(cap) if capc else "-", over, rows)
+<h4>%s %s <span class="sub">%s</span></h4>
+%s</div>""" % (h(t["name"]), tpl.troop_badge(t["troop"]),
+               i18n.t("target_summary", n=len(t["members"]),
+                      total=tpl.fmt_num(total),
+                      cap=tpl.fmt_num(cap) if capc else "-", over=over),
+               rows)
 
     if candidates:
         rows = ""
         for c in candidates:
             choice = (entries.get(c["id"]) or {}).get("choice") or ""
-            label = '%s %s<span class="sub">(%s)／登録: %s</span>' % (
+            label = '%s %s<span class="sub">(%s)%s</span>' % (
                 h(c["name"]), tpl.troop_badge(c.get("troop_type")),
-                tpl.fmt_num(_march(c)), h(choice))
+                tpl.fmt_num(_march(c)), i18n.t("registered_choice", choice=h(choice)))
             if not sess:
                 rows += '<div class="prow">%s</div>' % label
                 continue
@@ -297,24 +308,26 @@ def _render_shift(req, srv, ev, byid, sess, tpath):
                 acts += ('<form method="post" action="%s">%s'
                          '<input type="hidden" name="act" value="add">'
                          '<input type="hidden" name="to" value="%d">'
-                         '<button class="btn small">%sへ追加</button></form>'
+                         '<button class="btn small">%s</button></form>'
                          ) % (action_url, _hidden(csrf, slot=cur, cid=c["id"]),
-                              oi, h(ot["name"]))
+                              oi, i18n.t("btn_add_to", name=h(ot["name"])))
             rows += ('<details class="prow"><summary>%s</summary>'
                      '<div class="acts">%s</div></details>') % (label, acts)
-        body += ('<div class="starget"><h4>未配置 <span class="sub">%d人'
-                 '（参加申請者のうちこの%sのシフトに入っていない人）</span></h4>'
-                 '%s</div>') % (len(candidates), h(SLOT_LABELS[cur]), rows)
+        body += ('<div class="starget"><h4>%s</h4>'
+                 '%s</div>') % (
+            i18n.t("unplaced_heading", n=len(candidates), slot=i18n.t(SLOT_LABELS[cur])),
+            rows)
 
-    foot = '<p class="hint">発表: %s ／ 参加登録の変動はこの表に反映されません。</p>' % h(
-        (pub.get("created") or "").replace("T", " "))
+    foot = '<p class="hint">%s</p>' % i18n.t(
+        "published_at", date=h((pub.get("created") or "").replace("T", " ")))
     if sess:
-        foot += '<p class="hint">メンバーをタップすると任命・移動などの操作ができます。</p>'
+        foot += '<p class="hint">%s</p>' % i18n.t("host_edit_hint")
     else:
-        foot += '<p><a class="btn small" href="%s?login=1">ホストとして編集</a></p>' % action_url
-    foot += '<p><a class="btn" href="%s">報酬分配リスト</a></p>' % h(
-        url("/%s/e/%s/rewards" % (srv, ev["id"])))
-    return html_page("発表シフト - %s" % ev["title"], body + foot,
+        foot += '<p><a class="btn small" href="%s?login=1">%s</a></p>' % (
+            action_url, i18n.t("link_edit_as_host"))
+    foot += '<p><a class="btn" href="%s">%s</a></p>' % (
+        h(url("/%s/e/%s/rewards" % (srv, ev["id"]))), i18n.t("link_rewards"))
+    return html_page(i18n.t("title_published_shift", title=ev["title"]), body + foot,
                      back=url("/%s/e/%s" % (srv, ev["id"])))
 
 
@@ -386,7 +399,7 @@ def rewards_page(req, srv, eid):
         if r:
             return r
         if not _csrf_ok(req, sess):
-            return _login_page(srv, ev, tpath, "セッションの有効期限が切れました。もう一度認証してください")
+            return _login_page(srv, ev, tpath, i18n.t("err_host_session_expired"))
         act = req.field("act")
         cid = req.field("cid")
         with store.lock(srv):
@@ -417,8 +430,8 @@ def rewards_page(req, srv, eid):
 
     back = url("/%s/e/%s/shift" % (srv, eid))
     if not ev.get("published"):
-        return html_page("報酬分配リスト - %s" % ev["title"],
-                         '<p>発表シフトの作成後に利用できます。</p>', back=back)
+        return html_page(i18n.t("title_rewards", title=ev["title"]),
+                         '<p>%s</p>' % i18n.t("rewards_need_shift"), back=back)
 
     rw = ev.get("rewards") or {}
     attend_off = set(rw.get("attend_off") or [])
@@ -426,7 +439,7 @@ def rewards_page(req, srv, eid):
     rows = _allocate(_reward_rows(ev, byid), attend_off, fixed)
     action_url = h(url(tpath))
     csrf = auth.csrf_token(sess) if sess else ""
-    labels = dict((k, l) for k, l, _n in REWARD_COLORS)
+    labels = dict((k, i18n.t(l)) for k, l, _n in REWARD_COLORS)
 
     trs = ""
     for i, r in enumerate(rows):
@@ -436,14 +449,14 @@ def rewards_page(req, srv, eid):
             cls = "rw-off"
         badges = ""
         if r["captain"]:
-            badges += '<span class="cap">（キャプテン）</span>'
+            badges += '<span class="cap">%s</span>' % i18n.t("label_captain")
         if r["sub"]:
-            badges += '<span class="subcap">（サブ）</span>'
+            badges += '<span class="subcap">%s</span>' % i18n.t("label_sub")
         if r["full"]:
-            badges += '<span class="sub">（フル）</span>'
+            badges += '<span class="sub">%s</span>' % i18n.t("badge_full")
         color_cell = labels.get(r["color"], "-")
         if r["fixed"]:
-            color_cell += '<span class="sub">固定</span>'
+            color_cell += '<span class="sub">%s</span>' % i18n.t("fixed_tag")
         name = '<a href="%s">%s</a>' % (
             h(url("/%s/c/%s" % (srv, c["id"]))), h(c["name"]))
         if sess:
@@ -453,55 +466,58 @@ def rewards_page(req, srv, eid):
                 acts += ('<form method="post" action="%s">%s'
                          '<input type="hidden" name="act" value="color">'
                          '<input type="hidden" name="color" value="%s">'
-                         '<button class="btn small">%sに固定</button></form>') % (
-                    action_url, common, k, l)
+                         '<button class="btn small">%s</button></form>') % (
+                    action_url, common, k, i18n.t("btn_fix_to", label=i18n.t(l)))
             acts += ('<form method="post" action="%s">%s'
                      '<input type="hidden" name="act" value="color">'
                      '<input type="hidden" name="color" value="none">'
-                     '<button class="btn small">色なしに固定</button></form>') % (
-                action_url, common)
+                     '<button class="btn small">%s</button></form>') % (
+                action_url, common, i18n.t("btn_fix_none"))
             acts += ('<form method="post" action="%s">%s'
                      '<input type="hidden" name="act" value="color">'
                      '<input type="hidden" name="color" value="auto">'
-                     '<button class="btn small">自動に戻す</button></form>') % (
-                action_url, common)
+                     '<button class="btn small">%s</button></form>') % (
+                action_url, common, i18n.t("btn_auto"))
             name = ('<details class="rwname"><summary>%s%s</summary>'
                     '<div class="acts">%s</div></details>') % (name, badges, acts)
             att = ('<form method="post" action="%s">%s'
                    '<input type="hidden" name="act" value="attend">'
                    '<label class="attlabel"><input type="checkbox" name="on" value="1"%s'
-                   ' onchange="this.form.submit()"> 出席</label>'
-                   '<noscript><button class="btn small">更新</button></noscript>'
+                   ' onchange="this.form.submit()"> %s</label>'
+                   '<noscript><button class="btn small">%s</button></noscript>'
                    '</form>') % (action_url, _hidden(csrf, cid=c["id"]),
-                                 " checked" if r["attend"] else "")
+                                 " checked" if r["attend"] else "",
+                                 i18n.t("attend_label"), i18n.t("btn_update"))
         else:
             name += badges
-            att = "出席" if r["attend"] else "欠席"
+            att = i18n.t("attend_status_yes") if r["attend"] else i18n.t("attend_status_no")
         trs += ('<tr class="%s"><td class="num">%d</td><td>%s</td><td>%s</td>'
                 '<td class="num">%s</td><td class="num">%s</td><td>%s</td></tr>') % (
             cls, i + 1, color_cell, name,
             tpl.fmt_num(c.get("march_size")), tpl.fmt_num(c.get("gather_size")),
             att)
     if not trs:
-        trs = '<tr><td colspan="6">発表シフトにメンバーがいません</td></tr>'
+        trs = '<tr><td colspan="6">%s</td></tr>' % i18n.t("empty_no_shift_members")
 
     counts = {}
     for r in rows:
         if r["color"]:
             counts[r["color"]] = counts.get(r["color"], 0) + 1
-    summary = "／".join("%s %d/%d" % (l, counts.get(k, 0), n)
+    summary = "／".join("%s %d/%d" % (i18n.t(l), counts.get(k, 0), n)
                         for k, l, n in REWARD_COLORS)
-    hint = ('<p class="hint">優先順位: キャプテン → サブ → フルタイム → 部隊数 → '
-            'ギャザー。割当: %s</p>') % h(summary)
+    hint = '<p class="hint">%s</p>' % i18n.t("priority_hint", summary=h(summary))
     if sess:
-        hint += '<p class="hint">名前をタップで色の固定、出席チェックで分配から除外できます。</p>'
+        hint += '<p class="hint">%s</p>' % i18n.t("reward_edit_hint")
     else:
-        hint += '<p><a class="btn small" href="%s?login=1">ホストとして編集</a></p>' % action_url
+        hint += '<p><a class="btn small" href="%s?login=1">%s</a></p>' % (
+            action_url, i18n.t("link_edit_as_host"))
 
     body = hint + ('<table class="list rwlist">'
-                   '<tr><th>#</th><th>色</th><th>メンバー</th><th>部隊</th>'
-                   '<th>ギャザー</th><th>出席</th></tr>%s</table>') % trs
-    return html_page("報酬分配リスト - %s" % ev["title"], body, back=back)
+                   '<tr><th>%s</th><th>%s</th><th>%s</th><th>%s</th>'
+                   '<th>%s</th><th>%s</th></tr>%s</table>') % (
+        i18n.t("th_num"), i18n.t("th_color"), i18n.t("th_member"),
+        i18n.t("th_march"), i18n.t("th_gather"), i18n.t("th_attend"), trs)
+    return html_page(i18n.t("title_rewards", title=ev["title"]), body, back=back)
 
 
 ROUTES = [

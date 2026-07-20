@@ -1,7 +1,7 @@
 """HTML生成の共通部品。可変値は必ず h() でエスケープして埋め込むこと。"""
 import html
 
-from lib import config
+from lib import config, i18n
 
 
 def h(s):
@@ -12,13 +12,23 @@ def url(path):
     return config.BASE + path
 
 
+def _langswitch_html():
+    switch = i18n.switch_links()
+    if not switch:
+        return ""
+    links = "".join(
+        '<a class="%s" href="%s">%s</a>' % ("on" if cur else "", h(href), h(label))
+        for href, label, cur in switch)
+    return '<nav class="langswitch">%s</nav>' % links
+
+
 def page(title, body, back=None, wide=False):
     backlink = ""
     if back:
-        backlink = '<a class="back" href="%s">&laquo; 戻る</a>' % h(back)
+        backlink = '<a class="back" href="%s">&laquo; %s</a>' % (h(back), i18n.t("back_link"))
     klass = "wide" if wide else ""
     return """<!DOCTYPE html>
-<html lang="ja">
+<html lang="%s">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,7 +37,7 @@ def page(title, body, back=None, wide=False):
 <link rel="stylesheet" href="%s">
 </head>
 <body class="%s">
-<header><a href="%s">%s</a></header>
+<header><a href="%s">%s</a>%s</header>
 <main>
 %s
 <h1>%s</h1>
@@ -35,8 +45,10 @@ def page(title, body, back=None, wide=False):
 </main>
 <footer>%s</footer>
 </body>
-</html>""" % (h(title), h(config.SITE_NAME), url("/static/style.css"), klass,
-              url("/"), h(config.SITE_NAME), backlink, h(title), body,
+</html>""" % (h(i18n.current()), h(title), h(config.SITE_NAME),
+              url("/static/style.css"), klass,
+              url("/"), h(config.SITE_NAME), _langswitch_html(),
+              backlink, h(title), body,
               h(config.SITE_NAME))
 
 

@@ -10,12 +10,26 @@ body {
 header {
   background: #2c3e66;
   padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 header a {
   color: #fff;
   text-decoration: none;
   font-weight: 700;
 }
+.langswitch { display: flex; gap: 4px; flex-shrink: 0; }
+.langswitch a {
+  color: #b7c2de;
+  font-weight: 400;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.langswitch a.on { background: rgba(255, 255, 255, 0.18); color: #fff; font-weight: 700; }
 main {
   max-width: 640px;
   margin: 0 auto;

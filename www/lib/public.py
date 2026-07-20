@@ -4,17 +4,22 @@ import re
 import time
 import urllib.parse
 
-from lib import auth, config, evutil, images, shift, store, throttle, tpl
+from lib import auth, config, evutil, i18n, images, shift, store, throttle, tpl
 from lib.forms import validate_char
 from lib.tpl import h, url
 from lib.web import html_page, not_found, redirect
 
 _MSG = {
-    "imgerr": "画像の保存に失敗しました（形式・サイズ・投稿回数を確認してください）",
-    "saved": "保存しました",
-    "keysaved": "保存しました（編集キーを変更しました）",
-    "joined": "参加情報を更新しました",
+    "imgerr": "msg_imgerr",
+    "saved": "msg_saved",
+    "keysaved": "msg_keysaved",
+    "joined": "msg_joined",
 }
+
+
+def _msg_for(code):
+    key = _MSG.get(code)
+    return i18n.t(key) if key else ""
 
 
 def _now():
@@ -49,14 +54,16 @@ def _my_sessions(req, srv, chars):
 
 def _login_page(srv, char, tpath, error=""):
     body = tpl.errors_html([error]) + """
-<p>「%s」の操作には編集キーが必要です。</p>
+<p>%s</p>
 <form method="post" action="%s" class="stack">
-<input type="password" name="login_key" placeholder="編集キー" required>
-<button class="btn primary">認証する</button>
+<input type="password" name="login_key" placeholder="%s" required>
+<button class="btn primary">%s</button>
 </form>
-<p class="hint">編集キーを忘れた場合は管理者に再設定を依頼してください。</p>
-""" % (h(char["name"]), h(url(tpath)))
-    return html_page("編集キーの確認", body,
+<p class="hint">%s</p>
+""" % (i18n.t("login_required_for", name=h(char["name"])), h(url(tpath)),
+       i18n.t("edit_key_placeholder"), i18n.t("btn_login"),
+       i18n.t("login_forgot_hint"))
+    return html_page(i18n.t("title_login_confirm"), body,
                      back=url("/%s/c/%s" % (srv, char["id"])))
 
 
@@ -73,13 +80,15 @@ def _handle_login(req, srv, char, tpath):
         return _set_session(redirect(tpath), srv, char["id"])
     throttle.note_char_fail(srv, char["id"],
                             req.environ.get("REMOTE_ADDR"))
-    return _login_page(srv, char, tpath, "編集キーが違います")
+    return _login_page(srv, char, tpath, i18n.t("err_login_key_wrong"))
 
 
 def _csrf_ok(req, sess):
     return bool(sess) and req.field("csrf") == auth.csrf_token(sess)
 
-_EXPIRED = "セッションの有効期限が切れました。編集キーを入力してください"
+
+def _expired_msg():
+    return i18n.t("err_session_expired")
 
 
 # ---------- 画像 ----------
@@ -88,7 +97,7 @@ def _rate_error(char):
     now = int(time.time())
     char["upload_log"] = [t for t in char.get("upload_log", []) if t > now - 3600]
     if len(char["upload_log"]) >= config.UPLOAD_RATE:
-        return "画像の投稿が多すぎます。1時間ほど空けてからもう一度お試しください"
+        return i18n.t("err_upload_rate")
     return None
 
 
@@ -131,16 +140,17 @@ def _shelter_map_html(shelter):
     tx = max(70, min(952, px))              # ラベルが端で切れないように寄せる
     ty = y - 30 if y > 80 else y + 62
     return """
-<details class="mapbox"><summary class="btn small">避難所位置をマップ表示</summary>
+<details class="mapbox"><summary class="btn small">%s</summary>
 <div class="mapwrap">
-<svg viewBox="0 0 1022 1023" class="hexmap" role="img" aria-label="避難所位置">
+<svg viewBox="0 0 1022 1023" class="hexmap" role="img" aria-label="%s">
 <rect x="0" y="0" width="1022" height="1023" class="mapbg"/>
 <g class="grid">%s</g>
 <circle cx="%d" cy="%d" r="14" class="pt"/>
 <text x="%d" y="%d" text-anchor="middle" class="ptlabel">%d,%d</text>
 </svg>
-<p class="hint">マップ全体 511×1023（左上が 0,0・横方向は2倍に拡大表示）</p>
-</div></details>""" % (grid, px, y, tx, ty, x, y)
+<p class="hint">%s</p>
+</div></details>""" % (i18n.t("shelter_map_toggle"), i18n.t("shelter_map_aria"),
+                       grid, px, y, tx, ty, x, y, i18n.t("shelter_map_hint"))
 
 
 def _char_card(srv, c):
@@ -150,16 +160,17 @@ def _char_card(srv, c):
             images.img_url(srv, cid, "t_profile.jpg"))
     else:
         img = '<div class="noimg">%s</div>' % h((c.get("name") or "?")[:1])
-    guild = c.get("guild") or "（無所属）"
+    guild = c.get("guild") or i18n.t("guild_none")
     return """<a class="char" href="%s">%s<div class="char-body">
 <div class="char-name">%s %s</div>
 <div class="char-sub">%s</div>
-<div class="char-nums">部隊 %s ／ ギャザー %s</div>
+<div class="char-nums">%s</div>
 </div></a>""" % (
         h(url("/%s/c/%s" % (srv, cid))), img, h(c["name"]),
         tpl.troop_badge(c.get("troop_type")), h(guild),
-        tpl.fmt_march(c.get("march_size"), c.get("tier")),
-        tpl.fmt_num(c.get("gather_size")))
+        i18n.t("char_card_nums",
+               march=tpl.fmt_march(c.get("march_size"), c.get("tier")),
+               gather=tpl.fmt_num(c.get("gather_size"))))
 
 
 def _char_form(srv, tpath, c, csrf, is_new, submit_label):
@@ -173,46 +184,59 @@ def _char_form(srv, tpath, c, csrf, is_new, submit_label):
         for t in config.TROOP_TYPES)
     if is_new:
         keypart = """
-<label>編集キー（%d文字以上・編集時に必要）<input type="password" name="edit_key" required></label>
-<label>編集キー（確認）<input type="password" name="edit_key2" required></label>
-""" % config.MIN_KEY_LEN
+<label>%s<input type="password" name="edit_key" required></label>
+<label>%s<input type="password" name="edit_key2" required></label>
+""" % (i18n.t("label_edit_key_new", min=config.MIN_KEY_LEN),
+       i18n.t("label_edit_key_confirm"))
     else:
         keypart = """
-<h2>編集キー変更</h2>
-<label>新しい編集キー（変更する場合のみ・%d文字以上）<input type="password" name="new_key"></label>
-<label>新しい編集キー（確認）<input type="password" name="new_key2"></label>
-""" % config.MIN_KEY_LEN
-    imglabel = "プロフィール画像（1枚・5MBまで）"
+<h2>%s</h2>
+<label>%s<input type="password" name="new_key"></label>
+<label>%s<input type="password" name="new_key2"></label>
+""" % (i18n.t("heading_change_key"),
+       i18n.t("label_new_key", min=config.MIN_KEY_LEN),
+       i18n.t("label_new_key_confirm"))
+    imglabel = i18n.t("img_label_new")
     if c.get("has_profile_img"):
-        imglabel = "プロフィール画像（選択すると差し替え）"
+        imglabel = i18n.t("img_label_replace")
     return """
 <form method="post" action="%s" enctype="multipart/form-data" class="stack">
 <input type="hidden" name="csrf" value="%s">
-<label>キャラクター名 *<input type="text" name="name" maxlength="30" value="%s" required></label>
-<label>ギルド名<input type="text" name="guild" maxlength="30" value="%s"></label>
-<label>特化兵種 *<select name="troop_type">%s</select></label>
-<label>Tier（兵種ティア）<input type="text" name="tier" inputmode="numeric" value="%s" placeholder="例: 8"></label>
-<label>部隊規模<input type="text" name="march_size" inputmode="numeric" value="%s" placeholder="例: 1500000"></label>
-<label>ギャザー規模<input type="text" name="gather_size" inputmode="numeric" value="%s"></label>
-<label>避難所座標（xxx,yyy）<input type="text" name="shelter" value="%s" placeholder="例: 123,456"></label>
+<label>%s<input type="text" name="name" maxlength="30" value="%s" required></label>
+<label>%s<input type="text" name="guild" maxlength="30" value="%s"></label>
+<label>%s<select name="troop_type">%s</select></label>
+<label>%s<input type="text" name="tier" inputmode="numeric" value="%s" placeholder="%s"></label>
+<label>%s<input type="text" name="march_size" inputmode="numeric" value="%s" placeholder="%s"></label>
+<label>%s<input type="text" name="gather_size" inputmode="numeric" value="%s"></label>
+<label>%s<input type="text" name="shelter" value="%s" placeholder="%s"></label>
 <label>%s<input type="file" name="profile_img" accept="image/jpeg,image/png,image/webp"></label>
 %s
 <button class="btn primary">%s</button>
-</form>""" % (h(url(tpath)), h(csrf), v("name"), v("guild"), opts,
-              v("tier"), v("march_size"), v("gather_size"), v("shelter"),
+</form>""" % (h(url(tpath)), h(csrf),
+              i18n.t("label_char_name"), v("name"),
+              i18n.t("label_guild"), v("guild"),
+              i18n.t("label_troop_type"), opts,
+              i18n.t("label_tier"), v("tier"), i18n.t("placeholder_tier_example"),
+              i18n.t("field_march_size"), v("march_size"),
+              i18n.t("placeholder_march_example"),
+              i18n.t("field_gather_size"), v("gather_size"),
+              i18n.t("label_shelter"), v("shelter"),
+              i18n.t("placeholder_shelter_example"),
               imglabel, keypart, h(submit_label))
 
 
 def _event_rows(srv, events):
     if not events:
-        return '<p class="empty">イベントはありません</p>'
+        return '<p class="empty">%s</p>' % i18n.t("empty_no_events")
     out = '<ul class="events">'
     for e in events:
-        mark = '<span class="tag closed">締切</span>' if evutil.is_closed(e) else ""
+        mark = ('<span class="tag closed">%s</span>' % i18n.t("tag_closed")
+                if evutil.is_closed(e) else "")
         out += ('<li><a href="%s"><span class="ev-date">%s</span> %s %s '
-                '<span class="sub">（参加登録 %d件）</span></a></li>') % (
+                '<span class="sub">%s</span></a></li>') % (
             h(url("/%s/e/%s" % (srv, e["id"]))), h(evutil.date_str(e)),
-            h(e["title"]), mark, len(e.get("entries") or {}))
+            h(e["title"]), mark,
+            i18n.t("event_entries_count", n=len(e.get("entries") or {})))
     return out + "</ul>"
 
 
@@ -224,7 +248,7 @@ def home(req):
         return redirect("/%s/" % s)
     errors = []
     if s:
-        errors.append("サーバー #%s は未登録です。管理者に登録を依頼してください" % s)
+        errors.append(i18n.t("err_server_not_registered", num=s))
     servers = store.load_servers()
     items = ""
     for num in sorted(servers):
@@ -232,20 +256,21 @@ def home(req):
                   '<span class="sub">%s</span></a></li>') % (
             h(url("/%s/" % num)), h(num), h(servers[num].get("name") or ""))
     if not items:
-        items = '<li class="empty">登録済みサーバーはまだありません</li>'
+        items = '<li class="empty">%s</li>' % i18n.t("empty_no_servers")
     body = tpl.errors_html(errors) + """
 <form method="get" action="%s" class="jump">
-<input type="text" name="s" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="サーバー番号（4桁）" required>
-<button class="btn primary">移動</button>
+<input type="text" name="s" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="%s" required>
+<button class="btn primary">%s</button>
 </form>
-<h2>サーバー一覧</h2>
-<ul class="cards">%s</ul>""" % (h(url("/")), items)
-    return html_page("サーバー選択", body)
+<h2>%s</h2>
+<ul class="cards">%s</ul>""" % (h(url("/")), i18n.t("placeholder_server_num"),
+                                i18n.t("btn_go"), i18n.t("heading_server_list"), items)
+    return html_page(i18n.t("title_server_select"), body)
 
 
 def server_top(req, srv):
     if not store.server_exists(srv):
-        return not_found("サーバー #%s は未登録です。管理者に登録を依頼してください" % srv)
+        return not_found(i18n.t("err_server_not_registered", num=srv))
     chars = store.list_characters(srv)
     guild = req.q("guild")
     counts = {}
@@ -261,22 +286,24 @@ def server_top(req, srv):
         href = url("/%s/" % srv) + "?guild=" + urllib.parse.quote(g)
         tags += '<a class="%s" href="%s">%s (%d)</a>' % (cls, h(href), h(g), counts[g])
     if guild:
-        tags += '<a class="tag clear" href="%s">解除</a>' % h(url("/%s/" % srv))
+        tags += '<a class="tag clear" href="%s">%s</a>' % (
+            h(url("/%s/" % srv)), i18n.t("tag_clear"))
 
     cards = "".join(_char_card(srv, c) for c in shown)
     if not cards:
-        cards = '<p class="empty">キャラクターがまだ登録されていません</p>'
+        cards = '<p class="empty">%s</p>' % i18n.t("empty_no_chars")
 
     body = """
-<p><a class="btn primary" href="%s">＋ キャラクター新規登録</a></p>
-<h2>イベント</h2>
+<p><a class="btn primary" href="%s">%s</a></p>
+<h2>%s</h2>
 %s
-<h2>キャラクター（%d）</h2>
+<h2>%s</h2>
 <div class="tags">%s</div>
 <div class="charlist">%s</div>""" % (
-        h(url("/%s/new" % srv)), _event_rows(srv, store.list_events(srv)),
-        len(shown), tags, cards)
-    return html_page("サーバー #%s" % srv, body, back=url("/"))
+        h(url("/%s/new" % srv)), i18n.t("btn_char_new"), i18n.t("heading_events"),
+        _event_rows(srv, store.list_events(srv)),
+        i18n.t("heading_chars", n=len(shown)), tags, cards)
+    return html_page(i18n.t("title_server_num", num=srv), body, back=url("/"))
 
 
 def char_new(req, srv):
@@ -285,19 +312,20 @@ def char_new(req, srv):
     tpath = "/%s/new" % srv
     back = url("/%s/" % srv)
     if req.method == "GET":
-        return html_page("キャラクター新規登録",
-                         _char_form(srv, tpath, {}, "", True, "登録する"),
+        return html_page(i18n.t("title_char_new"),
+                         _char_form(srv, tpath, {}, "", True, i18n.t("btn_register")),
                          back=back)
     data, errors = validate_char(req)
     key = req.field("edit_key")
     if len(key) < config.MIN_KEY_LEN:
-        errors.append("編集キーは%d文字以上にしてください" % config.MIN_KEY_LEN)
+        errors.append(i18n.t("err_key_too_short", min=config.MIN_KEY_LEN))
     elif key != req.field("edit_key2"):
-        errors.append("編集キー（確認）が一致しません")
+        errors.append(i18n.t("err_key_confirm_mismatch"))
     if errors:
         return html_page(
-            "キャラクター新規登録",
-            tpl.errors_html(errors) + _char_form(srv, tpath, data, "", True, "登録する"),
+            i18n.t("title_char_new"),
+            tpl.errors_html(errors) + _char_form(
+                srv, tpath, data, "", True, i18n.t("btn_register")),
             back=back)
     salt = auth.new_salt()
     imgerr = None
@@ -319,7 +347,7 @@ def char_detail(req, srv, cid):
     char = store.get_character(srv, cid)
     if not char:
         return not_found()
-    note = tpl.notice(_MSG.get(req.q("m"), ""))
+    note = tpl.notice(_msg_for(req.q("m")))
 
     if char.get("has_profile_img"):
         u = h(images.img_url(srv, cid, "profile.jpg"))
@@ -332,15 +360,16 @@ def char_detail(req, srv, cid):
         gl = '<a href="%s?guild=%s">%s</a>' % (
             h(url("/%s/" % srv)), h(urllib.parse.quote(guild)), h(guild))
     else:
-        gl = "（無所属）"
+        gl = i18n.t("guild_none")
     rows = ""
     for label, val in (
-            ("ギルド名", gl),
-            ("特化兵種", tpl.troop_badge(char.get("troop_type"))),
-            ("部隊規模", h(tpl.fmt_march(char.get("march_size"), char.get("tier")))),
-            ("ギャザー規模", h(tpl.fmt_num(char.get("gather_size")))),
-            ("避難所座標", h(char.get("shelter") or "-")),
-            ("更新日", h((char.get("updated") or "").replace("T", " ")))):
+            (i18n.t("kv_guild"), gl),
+            (i18n.t("kv_troop_type"), tpl.troop_badge(char.get("troop_type"))),
+            (i18n.t("field_march_size"),
+             h(tpl.fmt_march(char.get("march_size"), char.get("tier")))),
+            (i18n.t("field_gather_size"), h(tpl.fmt_num(char.get("gather_size")))),
+            (i18n.t("kv_shelter"), h(char.get("shelter") or "-")),
+            (i18n.t("kv_updated"), h((char.get("updated") or "").replace("T", " ")))):
         rows += "<tr><th>%s</th><td>%s</td></tr>" % (label, val)
 
     album = ""
@@ -349,22 +378,24 @@ def char_detail(req, srv, cid):
             h(images.img_url(srv, cid, name)),
             h(images.img_url(srv, cid, "t_" + name)))
     if not album:
-        album = '<p class="empty">アルバムは空です</p>'
+        album = '<p class="empty">%s</p>' % i18n.t("empty_album")
 
     own = """
 <div class="ownerbar">
-<a class="btn" href="%s">編集</a>
-<a class="btn" href="%s">アルバム管理</a>
+<a class="btn" href="%s">%s</a>
+<a class="btn" href="%s">%s</a>
 </div>
-<p class="hint">※本人（編集キーを知っている人）のみ操作できます。
-キャラクターの削除は管理者に依頼してください。</p>""" % (
-        h(url("/%s/c/%s/edit" % (srv, cid))),
-        h(url("/%s/c/%s/album" % (srv, cid))))
+<p class="hint">%s</p>""" % (
+        h(url("/%s/c/%s/edit" % (srv, cid))), i18n.t("own_edit"),
+        h(url("/%s/c/%s/album" % (srv, cid))), i18n.t("own_album"),
+        i18n.t("own_hint"))
 
     smap = _shelter_map_html(char.get("shelter") or "")
     body = (note + '<div class="profile-wrap">%s</div><table class="kv">%s</table>%s'
-            '<h2>アルバム（%d/%d）</h2><div class="album">%s</div>%s') % (
-        pi, rows, smap, len(char.get("album", [])), config.MAX_ALBUM, album, own)
+            '<h2>%s</h2><div class="album">%s</div>%s') % (
+        pi, rows, smap,
+        i18n.t("heading_album", cur=len(char.get("album", [])), max=config.MAX_ALBUM),
+        album, own)
     return html_page(char["name"], body, back=url("/%s/" % srv))
 
 
@@ -380,20 +411,20 @@ def char_edit(req, srv, cid):
         if r:
             return r
         if not _csrf_ok(req, sess):
-            return _login_page(srv, char, tpath, _EXPIRED)
+            return _login_page(srv, char, tpath, _expired_msg())
         data, errors = validate_char(req)
         newkey = req.field("new_key")
         if newkey:
             if len(newkey) < config.MIN_KEY_LEN:
-                errors.append("新しい編集キーは%d文字以上にしてください" % config.MIN_KEY_LEN)
+                errors.append(i18n.t("err_newkey_too_short", min=config.MIN_KEY_LEN))
             elif newkey != req.field("new_key2"):
-                errors.append("新しい編集キー（確認）が一致しません")
+                errors.append(i18n.t("err_newkey_confirm_mismatch"))
         if errors:
             return html_page(
-                "キャラクター編集",
+                i18n.t("title_char_edit"),
                 tpl.errors_html(errors) + _char_form(
                     srv, tpath, dict(char, **data),
-                    auth.csrf_token(sess), False, "保存する"),
+                    auth.csrf_token(sess), False, i18n.t("btn_save")),
                 back=back)
         imgerr = None
         with store.lock(srv):
@@ -413,9 +444,9 @@ def char_edit(req, srv, cid):
         return redirect("/%s/c/%s?m=%s" % (srv, cid, m))
     if not sess:
         return _login_page(srv, char, tpath)
-    return html_page("キャラクター編集",
+    return html_page(i18n.t("title_char_edit"),
                      _char_form(srv, tpath, char, auth.csrf_token(sess),
-                                False, "保存する"),
+                                False, i18n.t("btn_save")),
                      back=back)
 
 
@@ -432,7 +463,7 @@ def char_album(req, srv, cid):
         if r:
             return r
         if not _csrf_ok(req, sess):
-            return _login_page(srv, char, tpath, _EXPIRED)
+            return _login_page(srv, char, tpath, _expired_msg())
         act = req.field("act")
         with store.lock(srv):
             char = store.get_character(srv, cid)
@@ -447,9 +478,9 @@ def char_album(req, srv, cid):
             else:
                 f = req.file("photo")
                 if not f:
-                    error = "ファイルを選択してください"
+                    error = i18n.t("err_select_file")
                 elif len(char.get("album", [])) >= config.MAX_ALBUM:
-                    error = "アルバムは最大%d枚までです" % config.MAX_ALBUM
+                    error = i18n.t("err_album_max", max=config.MAX_ALBUM)
                 else:
                     error = _rate_error(char)
                     if not error:
@@ -473,24 +504,25 @@ def char_album(req, srv, cid):
         items += """<div class="ph-item"><a class="ph" href="%s"><img src="%s" alt=""></a>
 <form method="post" action="%s"><input type="hidden" name="csrf" value="%s">
 <input type="hidden" name="act" value="del"><input type="hidden" name="img" value="%s">
-<button class="btn danger small">削除</button></form></div>""" % (
+<button class="btn danger small">%s</button></form></div>""" % (
             h(images.img_url(srv, cid, name)),
             h(images.img_url(srv, cid, "t_" + name)),
-            h(url(tpath)), h(csrf), h(name))
+            h(url(tpath)), h(csrf), h(name), i18n.t("btn_delete"))
     if not items:
-        items = '<p class="empty">アルバムは空です</p>'
+        items = '<p class="empty">%s</p>' % i18n.t("empty_album")
     if len(char.get("album", [])) < config.MAX_ALBUM:
         up = """<form method="post" action="%s" enctype="multipart/form-data" class="stack">
 <input type="hidden" name="csrf" value="%s"><input type="hidden" name="act" value="add">
-<label>画像を追加（JPEG/PNG/WebP・5MBまで）<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required></label>
-<button class="btn primary">アップロード</button></form>""" % (h(url(tpath)), h(csrf))
+<label>%s<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required></label>
+<button class="btn primary">%s</button></form>""" % (
+            h(url(tpath)), h(csrf), i18n.t("label_add_photo"), i18n.t("btn_upload"))
     else:
-        up = ('<p class="hint">上限（%d枚）に達しています。'
-              '追加するには既存の画像を削除してください。</p>') % config.MAX_ALBUM
+        up = '<p class="hint">%s</p>' % i18n.t("hint_album_full", max=config.MAX_ALBUM)
     body = tpl.errors_html([error]) + \
-        '<p>%d / %d 枚</p><div class="album manage">%s</div><h2>追加</h2>%s' % (
-            len(char.get("album", [])), config.MAX_ALBUM, items, up)
-    return html_page("アルバム管理 - %s" % char["name"], body, back=back)
+        '<p>%s</p><div class="album manage">%s</div><h2>%s</h2>%s' % (
+            i18n.t("count_of", cur=len(char.get("album", [])), max=config.MAX_ALBUM),
+            items, i18n.t("heading_add"), up)
+    return html_page(i18n.t("title_album_manage", name=char["name"]), body, back=back)
 
 
 def event_page(req, srv, eid):
@@ -503,15 +535,15 @@ def event_page(req, srv, eid):
     errors = []
     if req.method == "POST":
         if evutil.is_closed(ev):
-            errors.append("このイベントは締め切られています")
+            errors.append(i18n.t("err_event_closed"))
         cid = req.field("char_id")
         choice = req.field("choice")
         char = byid.get(cid)
         if not errors:
             if not char:
-                errors.append("キャラクターを選択してください")
+                errors.append(i18n.t("err_select_char"))
             elif choice != "__cancel__" and choice not in ev.get("choices", []):
-                errors.append("参加区分を選択してください")
+                errors.append(i18n.t("err_select_choice"))
         newsession = False
         if not errors and not _get_session(req, srv, cid):
             key = req.field("edit_key")
@@ -525,7 +557,7 @@ def event_page(req, srv, eid):
                 if key:
                     throttle.note_char_fail(srv, cid,
                                             req.environ.get("REMOTE_ADDR"))
-                errors.append("編集キーが違います（この端末で初めて操作するキャラクターは編集キーが必要です）")
+                errors.append(i18n.t("err_login_key_wrong_event"))
         if not errors:
             with store.lock(srv):
                 ev2 = store.get_event(srv, eid)
@@ -546,15 +578,15 @@ def event_page(req, srv, eid):
 def _event_view(req, srv, ev, chars, byid, errors):
     note = ""
     if not errors:
-        msg = _MSG.get(req.q("m"), "")
+        msg = _msg_for(req.q("m"))
         if req.q("m") == "joined":
             c = byid.get(req.q("c"))
             if c:
-                msg = "「%s」の参加情報を更新しました" % c["name"]
+                msg = i18n.t("msg_joined_named", name=c["name"])
         note = tpl.notice(msg)
     closed = evutil.is_closed(ev)
-    state = ('<span class="tag closed">締切</span>' if closed
-             else '<span class="tag open">受付中</span>')
+    state = ('<span class="tag closed">%s</span>' % i18n.t("tag_closed") if closed
+             else '<span class="tag open">%s</span>' % i18n.t("tag_open"))
     bodytext = "<br>".join(h(line) for line in (ev.get("body") or "").splitlines())
     entries = ev.get("entries") or {}
 
@@ -568,7 +600,7 @@ def _event_view(req, srv, ev, chars, byid, errors):
                     names.append('<a href="%s">%s</a>' % (
                         h(url("/%s/c/%s" % (srv, cid))), h(c["name"])))
                 else:
-                    names.append("（削除済み）")
+                    names.append(i18n.t("deleted_char"))
         groups += "<tr><th>%s（%d）</th><td>%s</td></tr>" % (
             h(choice), len(names), "、".join(names) or "-")
 
@@ -578,29 +610,30 @@ def _event_view(req, srv, ev, chars, byid, errors):
             return '<a href="%s">%s</a><span class="sub">(%s)</span>%s' % (
                 h(url("/%s/c/%s" % (srv, c["id"]))), h(c["name"]),
                 tpl.fmt_num(c.get("march_size") or 0),
-                '<span class="cap">（キャプテン）</span>' if is_captain else "")
+                '<span class="cap">%s</span>' % i18n.t("label_captain") if is_captain else "")
 
-        shift_html = ('<h2>予想シフト表</h2>'
-                      '<p class="hint">参加登録から自動で振り分けています'
-                      '（登録が変わると振り分けも変わります）。各対象の合計は'
-                      'キャプテンの部隊+ギャザー規模が上限で、入り切らない場合は'
-                      '補欠になります。</p>')
+        shift_html = ('<h2>%s</h2><p class="hint">%s</p>'
+                     % (i18n.t("heading_forecast_shift"), i18n.t("forecast_hint")))
         for label, buckets, reserves in shift.tables(ev, byid):
             srows = ""
             for b in buckets:
                 mem = "、".join(member_html(c, c["id"] == b.get("captain"))
                                 for c in b["members"]) or "-"
                 cap = tpl.fmt_num(b["cap"]) if b["members"] else "-"
-                srows += ('<tr><th>%s %s<br><span class="sub">%d人 ／ 合計 %s'
-                          '<br>上限 %s</span></th><td>%s</td></tr>') % (
+                srows += ('<tr><th>%s %s<br><span class="sub">%s'
+                          '<br>%s</span></th><td>%s</td></tr>') % (
                     h(b["name"]), tpl.troop_badge(b["troop"]),
-                    len(b["members"]), tpl.fmt_num(b["total"]), cap, mem)
+                    i18n.t("forecast_count_total", n=len(b["members"]),
+                           total=tpl.fmt_num(b["total"])),
+                    i18n.t("forecast_cap", cap=cap),
+                    mem)
             if reserves:
                 mem = "、".join(member_html(c, False) for c in reserves)
-                srows += ('<tr><th>補欠<br><span class="sub">%d人</span></th>'
-                          '<td>%s</td></tr>') % (len(reserves), mem)
+                srows += ('<tr><th>%s<br><span class="sub">%s</span></th>'
+                          '<td>%s</td></tr>') % (
+                    i18n.t("reserve_heading"), i18n.t("reserve_count", n=len(reserves)), mem)
             if label:
-                shift_html += '<h3 class="shift-slot">%s</h3>' % h(label)
+                shift_html += '<h3 class="shift-slot">%s</h3>' % i18n.t("slot_" + label)
             shift_html += '<table class="kv shift-table">%s</table>' % srows
 
     form = ""
@@ -615,20 +648,20 @@ def _event_view(req, srv, ev, chars, byid, errors):
 
         def opt(c):
             cur = entries.get(c["id"], {}).get("choice")
-            mark = "／現在: %s" % cur if cur else ""
+            mark = i18n.t("current_choice_mark", cur=cur) if cur else ""
             return '<option value="%s"%s>%s%s</option>' % (
                 h(c["id"]), " selected" if c["id"] == sel_cid else "",
                 h(c["name"]), h(mark))
 
-        opts = '<option value="">選択してください</option>'
+        opts = '<option value="">%s</option>' % i18n.t("select_placeholder")
         authed = [c for c in chars if c["id"] in mine]
         others = [c for c in chars if c["id"] not in mine]
         if authed:
-            opts += ('<optgroup label="認証済み（編集キー不要）">%s</optgroup>'
-                     % "".join(opt(c) for c in authed))
+            opts += ('<optgroup label="%s">%s</optgroup>'
+                     % (i18n.t("optgroup_authed"), "".join(opt(c) for c in authed)))
             if others:
-                opts += ('<optgroup label="その他（編集キーが必要）">%s</optgroup>'
-                         % "".join(opt(c) for c in others))
+                opts += ('<optgroup label="%s">%s</optgroup>'
+                         % (i18n.t("optgroup_others"), "".join(opt(c) for c in others)))
         else:
             opts += "".join(opt(c) for c in others)
         radios = ""
@@ -636,39 +669,44 @@ def _event_view(req, srv, ev, chars, byid, errors):
             radios += ('<label class="radio"><input type="radio" name="choice" '
                        'value="%s" required> %s</label>') % (h(ch), h(ch))
         radios += ('<label class="radio"><input type="radio" name="choice" '
-                   'value="__cancel__"> 参加登録を取り消す</label>')
-        form = """<h2>参加登録</h2>
+                   'value="__cancel__"> %s</label>') % i18n.t("radio_cancel")
+        form = """<h2>%s</h2>
 <form method="post" action="%s" class="stack">
-<label>キャラクター<select name="char_id" required>%s</select></label>
+<label>%s<select name="char_id" required>%s</select></label>
 <div class="radios">%s</div>
-<label>編集キー<input type="password" name="edit_key" placeholder="認証済みの端末では不要"></label>
-<button class="btn primary">登録する</button>
-</form>""" % (h(url("/%s/e/%s" % (srv, ev["id"]))), opts, radios)
+<label>%s<input type="password" name="edit_key" placeholder="%s"></label>
+<button class="btn primary">%s</button>
+</form>""" % (i18n.t("heading_participation"), h(url("/%s/e/%s" % (srv, ev["id"]))),
+              i18n.t("select_char_label"), opts, radios,
+              i18n.t("edit_key_placeholder"), i18n.t("placeholder_edit_key_authed"),
+              i18n.t("btn_register_participation"))
     elif not chars:
-        form = '<p class="hint">参加登録にはまずキャラクター登録が必要です。</p>'
+        form = '<p class="hint">%s</p>' % i18n.t("hint_need_char_first")
 
-    info = '<p class="ev-head">%s <span class="ev-date">開催: %s</span>' % (
-        state, h(evutil.date_str(ev) or "-"))
+    info = '<p class="ev-head">%s <span class="ev-date">%s</span>' % (
+        state, i18n.t("ev_head_open_date", date=h(evutil.date_str(ev) or "-")))
     if evutil.deadline_str(ev):
-        info += ' <span class="ev-date">受付締切: %s</span>' % h(evutil.deadline_str(ev))
+        info += ' <span class="ev-date">%s</span>' % i18n.t(
+            "ev_head_deadline", date=h(evutil.deadline_str(ev)))
     info += "</p>"
     links = ""
     if ev.get("published") or closed:
-        links = '<p><a class="btn" href="%s">発表シフト</a>' % h(
-            url("/%s/e/%s/shift" % (srv, ev["id"])))
+        links = '<p><a class="btn" href="%s">%s</a>' % (
+            h(url("/%s/e/%s/shift" % (srv, ev["id"]))), i18n.t("link_published_shift"))
         if ev.get("published"):
-            links += ' <a class="btn" href="%s">報酬分配リスト</a>' % h(
-                url("/%s/e/%s/rewards" % (srv, ev["id"])))
+            links += ' <a class="btn" href="%s">%s</a>' % (
+                h(url("/%s/e/%s/rewards" % (srv, ev["id"]))), i18n.t("link_rewards"))
         links += "</p>"
 
     body = note + tpl.errors_html(errors) + """
 %s
 <p>%s</p>
 %s
-<h2>参加状況（%d件）</h2>
+<h2>%s</h2>
 <table class="kv">%s</table>
 %s
-%s""" % (info, bodytext, links, len(entries), groups, shift_html, form)
+%s""" % (info, bodytext, links, i18n.t("heading_participation_status", n=len(entries)),
+         groups, shift_html, form)
     return html_page(ev["title"], body, back=url("/%s/" % srv))
 
 

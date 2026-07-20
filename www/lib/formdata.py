@@ -6,7 +6,7 @@ urlencoded / multipart/form-data とも自前で解析する。
 import re
 import urllib.parse
 
-from lib import config
+from lib import config, i18n
 
 
 class FormError(Exception):
@@ -24,15 +24,15 @@ def parse(environ):
     except ValueError:
         clen = 0
     if clen > config.MAX_BODY_BYTES:
-        raise FormError("送信サイズが大きすぎます（合計 %dMB まで）"
-                        % (config.MAX_BODY_BYTES // 1024 // 1024))
+        raise FormError(i18n.t("err_body_too_large",
+                               mb=config.MAX_BODY_BYTES // 1024 // 1024))
     body = environ["wsgi.input"].read(clen) if clen else b""
     ctype = environ.get("CONTENT_TYPE", "")
     fields, files = {}, {}
     if ctype.startswith("multipart/form-data"):
         m = re.search(r'boundary="?([^";,]+)"?', ctype)
         if not m:
-            raise FormError("不正なフォームデータです")
+            raise FormError(i18n.t("err_bad_form"))
         _parse_multipart(body, m.group(1).encode("ascii"), fields, files)
     elif body:
         qs = urllib.parse.parse_qs(body.decode("utf-8", "replace"),

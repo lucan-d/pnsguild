@@ -5,3 +5,8 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(\d{4})(/.*)?$ index.cgi/$1$2 [L,QSA]
+
+# 言語切替（/set-lang）もディスパッチャに渡す
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^set-lang$ index.cgi/set-lang [L,QSA]

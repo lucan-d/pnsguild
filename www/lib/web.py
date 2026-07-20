@@ -9,7 +9,7 @@ import traceback
 import urllib.parse
 from http.cookies import SimpleCookie
 
-from lib import config, formdata, tpl
+from lib import config, formdata, i18n, tpl
 
 
 class Request:
@@ -78,8 +78,8 @@ def redirect(path):
     return r
 
 
-def not_found(msg="ページが見つかりません"):
-    return html_page("Not Found", "<p>%s</p>" % tpl.h(msg),
+def not_found(msg=None):
+    return html_page("Not Found", "<p>%s</p>" % tpl.h(msg or i18n.t("err_not_found")),
                      status="404 Not Found")
 
 
@@ -98,11 +98,12 @@ def make_app(routes):
             if resp is None:
                 resp = not_found()
         except formdata.FormError as e:
-            resp = html_page("エラー", "<p>%s</p>" % tpl.h(str(e)),
+            resp = html_page(i18n.t("title_error"), "<p>%s</p>" % tpl.h(str(e)),
                              status="413 Content Too Large")
         except Exception:
             traceback.print_exc(file=sys.stderr)
-            resp = html_page("エラー", "<p>内部エラーが発生しました。</p>",
+            resp = html_page(i18n.t("title_error"),
+                             "<p>%s</p>" % i18n.t("err_internal"),
                              status="500 Internal Server Error")
         headers = resp.headers
         if environ.get("wsgi.url_scheme") == "https":

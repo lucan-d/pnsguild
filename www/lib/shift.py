@@ -49,8 +49,8 @@ def tables(ev, byid):
     smap = slot_map(ev)
     defined = set(smap.values())
     if "first" in defined or "second" in defined:
-        return [(label, ) + _assign(ev, _participants(ev, byid, smap, slot))
-                for slot, label in (("first", "前半"), ("second", "後半"))]
+        return [(slot, ) + _assign(ev, _participants(ev, byid, smap, slot))
+                for slot in ("first", "second")]
     return [(None, ) + _assign(ev, _participants(ev, byid, smap, None))]
 
 
