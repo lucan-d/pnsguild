@@ -43,13 +43,13 @@ def page(title, body, back=None, wide=False):
 <h1>%s</h1>
 %s
 </main>
-<footer>%s</footer>
+<footer>%s ・ <a href="%s" target="_blank" rel="noopener">GitHub</a></footer>
 </body>
 </html>""" % (h(i18n.current()), h(title), h(config.SITE_NAME),
               url("/static/style.css"), klass,
               url("/"), h(config.SITE_NAME), _langswitch_html(),
               backlink, h(title), body,
-              h(config.SITE_NAME))
+              h(config.SITE_NAME), h(config.GITHUB_URL))
 
 
 def errors_html(errors):

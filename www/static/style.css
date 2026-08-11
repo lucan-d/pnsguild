@@ -42,6 +42,7 @@ footer {
   font-size: 12px;
   padding: 16px 0 24px;
 }
+footer a { color: inherit; }
 h1 { font-size: 20px; margin: 10px 0 14px; }
 h2 { font-size: 15px; margin: 22px 0 8px; color: #4a5468;
      border-left: 4px solid #2c3e66; padding-left: 8px; }
