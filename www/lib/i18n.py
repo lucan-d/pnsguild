@@ -135,6 +135,8 @@ _STRINGS = {
     "btn_go": {"ja": "移動", "en": "Go"},
     "heading_server_list": {"ja": "サーバー一覧", "en": "Server List"},
     "title_server_select": {"ja": "サーバー選択", "en": "Select Server"},
+    "github_link": {"ja": "GitHubでソースコードを公開しています",
+                    "en": "Source code is available on GitHub"},
 
     # ---------- public.py: server_top ----------
     "btn_char_new": {"ja": "＋ キャラクター新規登録",

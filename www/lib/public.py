@@ -263,8 +263,11 @@ def home(req):
 <button class="btn primary">%s</button>
 </form>
 <h2>%s</h2>
-<ul class="cards">%s</ul>""" % (h(url("/")), i18n.t("placeholder_server_num"),
-                                i18n.t("btn_go"), i18n.t("heading_server_list"), items)
+<ul class="cards">%s</ul>
+<p class="hint github-link"><a href="%s" target="_blank" rel="noopener">%s</a></p>""" % (
+        h(url("/")), i18n.t("placeholder_server_num"),
+        i18n.t("btn_go"), i18n.t("heading_server_list"), items,
+        h(config.GITHUB_URL), i18n.t("github_link"))
     return html_page(i18n.t("title_server_select"), body)
 
 

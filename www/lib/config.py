@@ -8,6 +8,9 @@ SITE_NAME = "PNSキャラクターリスト"
 # 公開URLのベースパス。サブドメイン直下に置くなら ""
 BASE = ""
 
+# トップページに出すGitHubリポジトリへのリンク先
+GITHUB_URL = "https://github.com/lucan-d/pnsguild"
+
 # データ保存先（ドキュメントルート外に置くこと）。未設定なら開発用に ../data
 DATA_DIR = os.environ.get("PNSG_DATA") or os.path.normpath(
     os.path.join(_here, "..", "..", "data"))
