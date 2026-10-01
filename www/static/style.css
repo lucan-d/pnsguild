@@ -83,7 +83,9 @@ form.stack select, form.stack textarea {
 form.stack input[type="file"] { display: block; margin-top: 6px; font-size: 14px; }
 form.stack button { margin-top: 8px; width: 100%; }
 body.wide form.stack button { width: auto; }
-form.inline input { padding: 8px 10px; border: 1px solid #c3cad6; border-radius: 8px; }
+form.inline input, form.inline select {
+  padding: 8px 10px; border: 1px solid #c3cad6; border-radius: 8px;
+}
 form.jump { display: flex; gap: 8px; margin: 14px 0; }
 form.jump input { flex: 1; padding: 10px; border: 1px solid #c3cad6;
   border-radius: 8px; font-size: 16px; }
@@ -173,6 +175,16 @@ ul.events a {
   text-decoration: none; color: #2a2f3a; font-size: 14px;
   box-shadow: 0 1px 3px rgba(20,30,60,.08);
 }
+
+/* キャラクターページ：受付中イベントへの参加リンク */
+ul.joinevents { list-style: none; margin: 8px 0 18px; padding: 0; }
+ul.joinevents li {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: #fff; border-radius: 10px; padding: 10px 12px; margin: 6px 0;
+  box-shadow: 0 1px 3px rgba(20,30,60,.08); font-size: 14px;
+}
+ul.joinevents .evname a { color: #2a2f3a; }
+ul.joinevents .btn { flex: none; }
 
 /* 発表シフト */
 .tabs { display: flex; gap: 6px; margin: 12px 0 4px; }

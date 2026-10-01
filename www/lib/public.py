@@ -353,6 +353,21 @@ def char_detail(req, srv, cid):
         return not_found()
     note = tpl.notice(_msg_for(req.q("m")))
 
+    open_events = [e for e in store.list_events(srv) if not evutil.is_closed(e)]
+    events_html = ""
+    if open_events:
+        items = ""
+        for e in open_events:
+            cur = (e.get("entries") or {}).get(cid, {}).get("choice")
+            mark = i18n.t("current_choice_mark", cur=cur) if cur else ""
+            items += ('<li><span class="evname"><a href="%s">%s</a>%s</span>'
+                     '<a class="btn small" href="%s">%s</a></li>') % (
+                h(url("/%s/e/%s" % (srv, e["id"]))), h(e["title"]), h(mark),
+                h(url("/%s/e/%s" % (srv, e["id"])) + "?cid=" + urllib.parse.quote(cid)),
+                i18n.t("btn_join_with_char"))
+        events_html = '<div class="openevents"><h2>%s</h2><ul class="joinevents">%s</ul></div>' % (
+            i18n.t("heading_open_events"), items)
+
     if char.get("has_profile_img"):
         u = h(images.img_url(srv, cid, "profile.jpg"))
         pi = '<a href="%s"><img class="profile" src="%s" alt=""></a>' % (u, u)
@@ -395,7 +410,7 @@ def char_detail(req, srv, cid):
         i18n.t("own_hint"))
 
     smap = _shelter_map_html(char.get("shelter") or "")
-    body = (note + '<div class="profile-wrap">%s</div><table class="kv">%s</table>%s'
+    body = (note + events_html + '<div class="profile-wrap">%s</div><table class="kv">%s</table>%s'
             '<h2>%s</h2><div class="album">%s</div>%s') % (
         pi, rows, smap,
         i18n.t("heading_album", cur=len(char.get("album", [])), max=config.MAX_ALBUM),
@@ -645,6 +660,8 @@ def _event_view(req, srv, ev, chars, byid, errors):
         mine = _my_sessions(req, srv, chars)
         if req.method == "POST":
             sel_cid = req.field("char_id")
+        elif req.q("cid") in byid:
+            sel_cid = req.q("cid")
         elif mine:
             sel_cid = max(mine, key=mine.get)  # 最後に認証したキャラを初期選択
         else:
@@ -657,9 +674,27 @@ def _event_view(req, srv, ev, chars, byid, errors):
                 h(c["id"]), " selected" if c["id"] == sel_cid else "",
                 h(c["name"]), h(mark))
 
-        opts = '<option value="">%s</option>' % i18n.t("select_placeholder")
+        guild_filter = req.q("guild")
         authed = [c for c in chars if c["id"] in mine]
         others = [c for c in chars if c["id"] not in mine]
+        guilds = sorted({c.get("guild") for c in others if c.get("guild")})
+        if guild_filter:
+            others = [c for c in others if (c.get("guild") or "") == guild_filter]
+
+        guild_select = ""
+        if guilds:
+            gopts = '<option value="">%s</option>' % i18n.t("guild_filter_all")
+            for g in guilds:
+                gopts += '<option value="%s"%s>%s</option>' % (
+                    h(g), " selected" if g == guild_filter else "", h(g))
+            cid_carry = ('<input type="hidden" name="cid" value="%s">' % h(sel_cid)
+                        if sel_cid else "")
+            guild_select = ("""<form method="get" action="%s" class="inline">%s
+<label>%s<select name="guild" onchange="this.form.submit()">%s</select></label>
+</form>""") % (h(url("/%s/e/%s" % (srv, ev["id"]))), cid_carry,
+               i18n.t("guild_filter_label"), gopts)
+
+        opts = '<option value="">%s</option>' % i18n.t("select_placeholder")
         if authed:
             opts += ('<optgroup label="%s">%s</optgroup>'
                      % (i18n.t("optgroup_authed"), "".join(opt(c) for c in authed)))
@@ -675,12 +710,14 @@ def _event_view(req, srv, ev, chars, byid, errors):
         radios += ('<label class="radio"><input type="radio" name="choice" '
                    'value="__cancel__"> %s</label>') % i18n.t("radio_cancel")
         form = """<h2>%s</h2>
+%s
 <form method="post" action="%s" class="stack">
 <label>%s<select name="char_id" required>%s</select></label>
 <div class="radios">%s</div>
 <label>%s<input type="password" name="edit_key" placeholder="%s"></label>
 <button class="btn primary">%s</button>
-</form>""" % (i18n.t("heading_participation"), h(url("/%s/e/%s" % (srv, ev["id"]))),
+</form>""" % (i18n.t("heading_participation"), guild_select,
+              h(url("/%s/e/%s" % (srv, ev["id"]))),
               i18n.t("select_char_label"), opts, radios,
               i18n.t("edit_key_placeholder"), i18n.t("placeholder_edit_key_authed"),
               i18n.t("btn_register_participation"))

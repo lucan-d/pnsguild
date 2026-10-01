@@ -161,6 +161,9 @@ _STRINGS = {
         "en": "New edit key confirmation does not match"},
 
     # ---------- public.py: char_detail ----------
+    "heading_open_events": {"ja": "受付中のイベント", "en": "Open Events"},
+    "btn_join_with_char": {"ja": "このキャラクターで参加する",
+                           "en": "Join with this character"},
     "kv_guild": {"ja": "ギルド名", "en": "Guild"},
     "kv_troop_type": {"ja": "特化兵種", "en": "Troop Type"},
     "kv_shelter": {"ja": "避難所座標", "en": "Shelter Coordinates"},
@@ -222,6 +225,8 @@ _STRINGS = {
                              "en": "{n} people / total {total}"},
     "forecast_cap": {"ja": "上限 {cap}", "en": "Cap {cap}"},
     "heading_participation": {"ja": "参加登録", "en": "Register Participation"},
+    "guild_filter_label": {"ja": "ギルドで絞り込み", "en": "Filter by guild"},
+    "guild_filter_all": {"ja": "すべて", "en": "All"},
     "select_char_label": {"ja": "キャラクター", "en": "Character"},
     "select_placeholder": {"ja": "選択してください", "en": "Please select"},
     "optgroup_authed": {"ja": "認証済み（編集キー不要）",
