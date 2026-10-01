@@ -206,6 +206,14 @@ tr.rw-off td .attlabel, tr.rw-off td form { text-decoration: none; }
 details.rwname summary { cursor: pointer; }
 .attlabel { white-space: nowrap; font-size: 13px; }
 
+/* 発表シフトのコピー用テキスト */
+textarea.copytext {
+  display: block; width: 100%; margin: 6px 0; padding: 9px 10px;
+  border: 1px solid #c3cad6; border-radius: 8px; font-size: 14px;
+  background: #fff; white-space: pre; overflow-wrap: normal;
+  overflow-x: auto;
+}
+
 /* 卒業済みキャラクター一覧（管理画面） */
 details.archived { margin: 14px 0; }
 details.archived summary { cursor: pointer; font-weight: 700; }

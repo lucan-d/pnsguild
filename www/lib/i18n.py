@@ -304,6 +304,10 @@ _STRINGS = {
     "slot_first": {"ja": "前半", "en": "First Half"},
     "slot_second": {"ja": "後半", "en": "Second Half"},
     "slot_all": {"ja": "全体", "en": "All"},
+    "heading_shift_copy": {"ja": "コピー用テキスト（ゲーム内チャットへ）",
+                           "en": "Copy Text (for in-game chat)"},
+    "btn_copy": {"ja": "コピー", "en": "Copy"},
+    "btn_copied": {"ja": "コピーしました", "en": "Copied"},
 
     # ---------- host.py: 報酬分配リスト ----------
     "title_rewards": {"ja": "報酬分配リスト - {title}",

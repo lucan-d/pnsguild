@@ -4,6 +4,7 @@
 認証（キャラクターの編集キーと同じ署名Cookie方式）が必要。
 発表シフトは受付締切後に予想シフトから生成して保存し、以後は手動調整のみ。
 """
+import json
 import time
 
 from lib import auth, config, evutil, i18n, shift, store, throttle, tpl
@@ -211,6 +212,26 @@ def _member_label(t, cid, byid):
     return label
 
 
+def _shift_text(ev, slot_label, targets, byid):
+    """ゲーム内チャットにそのまま貼れる、装飾無しのテキストを生成する。"""
+    lines = ["%s %s" % (ev["title"], slot_label)]
+    for t in targets:
+        lines.append("")
+        lines.append(t["name"])
+        if not t["members"]:
+            lines.append(i18n.t("unplaced"))
+            continue
+        for cid in t["members"]:
+            c = byid.get(cid)
+            name = c["name"] if c else i18n.t("deleted_char")
+            if t.get("captain") == cid:
+                name += i18n.t("label_captain")
+            elif t.get("sub") == cid:
+                name += i18n.t("label_sub")
+            lines.append(name)
+    return "\n".join(lines)
+
+
 def _hidden(csrf, **kw):
     out = '<input type="hidden" name="csrf" value="%s">' % h(csrf)
     for k, v in sorted(kw.items()):
@@ -292,6 +313,28 @@ def _render_shift(req, srv, ev, byid, sess, tpath):
                       total=tpl.fmt_num(total),
                       cap=tpl.fmt_num(cap) if capc else "-", over=over),
                rows)
+
+    copytext = _shift_text(ev, i18n.t(SLOT_LABELS[cur]), targets, byid)
+    copy_rows = min(24, max(4, copytext.count("\n") + 1))
+    body += """<div class="starget">
+<h4>%s</h4>
+<textarea id="shiftcopytext" class="copytext" readonly rows="%d">%s</textarea>
+<button type="button" class="btn small" onclick="pnsgCopyShiftText(this)">%s</button>
+</div>
+<script>
+function pnsgCopyShiftText(btn){
+  var t = document.getElementById('shiftcopytext');
+  t.focus(); t.select();
+  try { t.setSelectionRange(0, t.value.length); } catch (e) {}
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  if (!ok && navigator.clipboard) { navigator.clipboard.writeText(t.value); }
+  var orig = btn.textContent;
+  btn.textContent = %s;
+  setTimeout(function () { btn.textContent = orig; }, 1500);
+}
+</script>""" % (i18n.t("heading_shift_copy"), copy_rows, h(copytext),
+               i18n.t("btn_copy"), json.dumps(i18n.t("btn_copied")))
 
     if candidates:
         rows = ""
