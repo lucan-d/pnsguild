@@ -217,7 +217,7 @@ def _shift_text(ev, slot_label, targets, byid):
     lines = ["%s %s" % (ev["title"], slot_label)]
     for t in targets:
         lines.append("")
-        lines.append(t["name"])
+        lines.append("%s(%s)" % (t["name"], t["troop"]))
         if not t["members"]:
             lines.append(i18n.t("unplaced"))
             continue
