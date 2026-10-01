@@ -144,6 +144,7 @@ def _shelter_map_html(shelter):
 <div class="mapwrap">
 <svg viewBox="0 0 1022 1023" class="hexmap" role="img" aria-label="%s">
 <rect x="0" y="0" width="1022" height="1023" class="mapbg"/>
+<polygon points="256,472 295,511 256,550 217,511" class="maplake"/>
 <g class="grid">%s</g>
 <circle cx="%d" cy="%d" r="14" class="pt"/>
 <text x="%d" y="%d" text-anchor="middle" class="ptlabel">%d,%d</text>
