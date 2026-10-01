@@ -88,13 +88,15 @@ def server_view(req, srv):
                 store.save_servers(servers)
         notices.append("表示名を変更しました")
     chars = store.list_characters(srv)
-    rows = ""
-    for c in chars:
+    active = [c for c in chars if c.get("guild") != config.ARCHIVED_GUILD]
+    archived = [c for c in chars if c.get("guild") == config.ARCHIVED_GUILD]
+
+    def _char_row(c):
         img = ""
         if c.get("has_profile_img"):
             img = '<img class="mini" src="%s" alt="">' % h(
                 images.img_url(srv, c["id"], "t_profile.jpg"))
-        rows += ("""<tr><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td>
+        return ("""<tr><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td>
 <td class="num">%s</td><td class="num">%s</td><td>%s</td><td class="num">%d</td><td>%s</td></tr>""") % (
             img, h(aurl("/%s/c/%s" % (srv, c["id"]))), h(c["name"]),
             h(c.get("guild") or ""), h(c.get("troop_type") or ""),
@@ -102,8 +104,19 @@ def server_view(req, srv):
             h(tpl.fmt_num(c.get("gather_size"))),
             h(c.get("shelter") or ""), len(c.get("album") or []),
             h((c.get("updated") or "").replace("T", " ")))
+
+    rows = "".join(_char_row(c) for c in active)
     if not rows:
         rows = '<tr><td colspan="9">キャラクター未登録</td></tr>'
+    archived_html = ""
+    if archived:
+        archived_html = """
+<details class="archived"><summary>卒業済み（%s）・%d件</summary>
+<table class="list">
+<tr><th></th><th>名前</th><th>ギルド</th><th>兵種</th><th>部隊</th><th>ギャザー</th><th>座標</th><th>画像</th><th>更新</th></tr>
+%s</table>
+</details>""" % (h(config.ARCHIVED_GUILD), len(archived),
+                 "".join(_char_row(c) for c in archived))
     body = "".join(tpl.notice(n) for n in notices) + """
 <p><a href="%s">イベント管理</a> ／ <a href="%s">公開ページを見る</a></p>
 <h2>サーバー情報</h2>
@@ -114,9 +127,10 @@ def server_view(req, srv):
 <h2>キャラクター一覧</h2>
 <table class="list">
 <tr><th></th><th>名前</th><th>ギルド</th><th>兵種</th><th>部隊</th><th>ギャザー</th><th>座標</th><th>画像</th><th>更新</th></tr>
-%s</table>""" % (h(aurl("/%s/events" % srv)), h(tpl.url("/%s/" % srv)),
-                 h(aurl("/%s" % srv)), _csrf_input(),
-                 h(servers[srv].get("name") or ""), rows)
+%s</table>
+%s""" % (h(aurl("/%s/events" % srv)), h(tpl.url("/%s/" % srv)),
+         h(aurl("/%s" % srv)), _csrf_input(),
+         h(servers[srv].get("name") or ""), rows, archived_html)
     return _page("サーバー #%s" % srv, body, back=aurl("/"))
 
 

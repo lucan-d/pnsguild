@@ -131,7 +131,8 @@ def list_characters(srv):
             c = _read_json(os.path.join(d, fn), None)
             if c:
                 chars.append(c)
-    chars.sort(key=lambda c: (c.get("guild") or "", c.get("name") or ""))
+    chars.sort(key=lambda c: (c.get("guild") == config.ARCHIVED_GUILD,
+                              c.get("guild") or "", c.get("name") or ""))
     return chars
 
 

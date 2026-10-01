@@ -278,10 +278,13 @@ def server_top(req, srv):
         g = c.get("guild") or ""
         if g:
             counts[g] = counts.get(g, 0) + 1
-    shown = [c for c in chars if not guild or (c.get("guild") or "") == guild]
+    if guild:
+        shown = [c for c in chars if (c.get("guild") or "") == guild]
+    else:
+        shown = [c for c in chars if c.get("guild") != config.ARCHIVED_GUILD]
 
     tags = ""
-    for g in sorted(counts):
+    for g in sorted(counts, key=lambda g: (g == config.ARCHIVED_GUILD, g)):
         cls = "tag on" if g == guild else "tag"
         href = url("/%s/" % srv) + "?guild=" + urllib.parse.quote(g)
         tags += '<a class="%s" href="%s">%s (%d)</a>' % (cls, h(href), h(g), counts[g])

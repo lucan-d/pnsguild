@@ -31,6 +31,9 @@ AUTH_LOCK_SECS = 15 * 60             # ロック時間（秒）＝失敗カウ�
 
 TROOP_TYPES = ("Fighter", "Shooter", "Rider")
 
+# このギルド名のキャラクターは「卒業済み」扱い：一覧末尾・既定非表示にする
+ARCHIVED_GUILD = "Alumni"
+
 # イベントのシフト対象デフォルト（名称, 兵種）
 SHIFT_TARGETS = (
     ("中央基地", "Fighter"),
