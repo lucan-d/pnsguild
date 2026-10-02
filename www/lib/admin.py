@@ -413,6 +413,24 @@ def event_edit(req, srv, eid):
                 ev.pop("rewards", None)
                 store.save_event(srv, ev)
             notices.append("発表シフトと報酬リストを破棄しました")
+        elif req.field("act") == "set_entry":
+            cid = req.field("cid")
+            choice = req.field("choice")
+            char = store.get_character(srv, cid)
+            if not char:
+                errors.append("キャラクターを選択してください")
+            elif choice != "__cancel__" and choice not in ev.get("choices", []):
+                errors.append("参加区分を選択してください")
+            else:
+                with store.lock(srv):
+                    ev = store.get_event(srv, eid) or ev
+                    ev.setdefault("entries", {})
+                    if choice == "__cancel__":
+                        ev["entries"].pop(cid, None)
+                    else:
+                        ev["entries"][cid] = {"choice": choice, "updated": _now()}
+                    store.save_event(srv, ev)
+                notices.append("%sの参加登録を更新しました" % char["name"])
         else:
             title = req.field("title")
             if not title or len(title) > 50:
@@ -433,15 +451,46 @@ def event_edit(req, srv, eid):
                         ev["host_hash"] = auth.hash_key(ev["host_salt"], hp)
                     store.save_event(srv, ev)
                 notices.append("保存しました")
-    chars = dict((c["id"], c) for c in store.list_characters(srv))
+    char_list = store.list_characters(srv)
+    chars = dict((c["id"], c) for c in char_list)
+    ev_url = h(aurl("/%s/e/%s" % (srv, eid)))
+    csrf = _csrf_input()
+
+    def _cancel_form(cid):
+        return ('<form method="post" action="%s" class="inline">%s'
+                '<input type="hidden" name="act" value="set_entry">'
+                '<input type="hidden" name="cid" value="%s">'
+                '<input type="hidden" name="choice" value="__cancel__">'
+                '<button class="btn small danger">取消</button></form>') % (
+            ev_url, csrf, h(cid))
+
     rows = ""
     for cid, ent in sorted((ev.get("entries") or {}).items()):
         c = chars.get(cid)
-        rows += "<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+        rows += "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
             h(c["name"]) if c else "（削除済み）", h(ent.get("choice") or ""),
-            h((ent.get("updated") or "").replace("T", " ")))
+            h((ent.get("updated") or "").replace("T", " ")), _cancel_form(cid))
     if not rows:
-        rows = '<tr><td colspan="3">参加登録なし</td></tr>'
+        rows = '<tr><td colspan="4">参加登録なし</td></tr>'
+
+    charopts = '<option value="">選択してください</option>'
+    for c in char_list:
+        cur = (ev.get("entries") or {}).get(c["id"], {}).get("choice")
+        mark = "（現在: %s）" % cur if cur else ""
+        charopts += '<option value="%s">%s%s</option>' % (
+            h(c["id"]), h(c["name"]), h(mark))
+    entry_radios = "".join(
+        '<label class="radio"><input type="radio" name="choice" value="%s" required> %s</label>'
+        % (h(ch), h(ch)) for ch in ev.get("choices", []))
+    entry_radios += ('<label class="radio"><input type="radio" name="choice" '
+                     'value="__cancel__"> 取り消す</label>')
+    entry_form = """
+<form method="post" action="%s" class="stack admin-form">%s
+<input type="hidden" name="act" value="set_entry">
+<label>キャラクター *<select name="cid" required>%s</select></label>
+<div class="radios">%s</div>
+<button class="btn primary">参加登録を追加・変更</button>
+</form>""" % (ev_url, csrf, charopts, entry_radios)
 
     pub_url = tpl.url("/%s/e/%s/shift" % (srv, eid))
     if ev.get("published"):
@@ -468,7 +517,8 @@ def event_edit(req, srv, eid):
 <button class="btn primary">保存</button>
 </form>
 <h2>参加状況（%d件）</h2>
-<table class="list"><tr><th>キャラクター</th><th>区分</th><th>更新</th></tr>%s</table>
+<table class="list"><tr><th>キャラクター</th><th>区分</th><th>更新</th><th></th></tr>%s</table>
+%s
 <h2>発表シフト</h2>
 %s
 <h2>削除</h2>
@@ -482,7 +532,7 @@ def event_edit(req, srv, eid):
               _shift_form_part(ev.get("shift"), ev.get("choices", []),
                                shiftmod.slot_map(ev)),
               " checked" if ev.get("closed") else "",
-              len(ev.get("entries") or {}), rows, pub_html,
+              len(ev.get("entries") or {}), rows, entry_form, pub_html,
               h(aurl("/%s/e/%s" % (srv, eid))), _csrf_input())
     return _page("イベント: %s" % ev["title"], body,
                  back=aurl("/%s/events" % srv))
