@@ -57,6 +57,10 @@ a { color: #2456b0; }
   background: #e6f4e8; border: 1px solid #9fd3a8; color: #22662e;
   border-radius: 8px; padding: 8px 12px; font-size: 14px;
 }
+.caution {
+  background: #fdf3d9; border: 1px solid #e3c572; color: #7a5b00;
+  border-radius: 8px; padding: 8px 12px; font-size: 14px;
+}
 .errors {
   background: #fdecec; border: 1px solid #f0b6b6; color: #a33;
   border-radius: 8px; padding: 8px 12px 8px 28px; font-size: 14px;

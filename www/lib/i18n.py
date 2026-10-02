@@ -245,7 +245,7 @@ _STRINGS = {
     "ev_head_deadline": {"ja": "受付締切: {date}",
                          "en": "Registration deadline: {date}"},
     "link_published_shift": {"ja": "発表シフト", "en": "Published Shift"},
-    "link_rewards": {"ja": "報酬分配リスト", "en": "Reward Distribution List"},
+    "link_rewards": {"ja": "報酬分配予定リスト", "en": "Planned Reward Distribution List"},
     "heading_participation_status": {"ja": "参加状況（{n}件）",
                                      "en": "Participation Status ({n})"},
 
@@ -314,9 +314,12 @@ _STRINGS = {
     "btn_copy": {"ja": "コピー", "en": "Copy"},
     "btn_copied": {"ja": "コピーしました", "en": "Copied"},
 
-    # ---------- host.py: 報酬分配リスト ----------
-    "title_rewards": {"ja": "報酬分配リスト - {title}",
-                      "en": "Reward Distribution List - {title}"},
+    # ---------- host.py: 報酬分配予定リスト ----------
+    "title_rewards": {"ja": "報酬分配予定リスト - {title}",
+                      "en": "Planned Reward Distribution List - {title}"},
+    "rewards_disclaimer": {
+        "ja": "あくまで予定です。当日の状況により変更されます。",
+        "en": "This is only a plan and may change depending on the situation on the day."},
     "rewards_need_shift": {"ja": "発表シフトの作成後に利用できます。",
                            "en": "Available once the published shift is created."},
     "badge_full": {"ja": "（フル）", "en": "(Full)"},

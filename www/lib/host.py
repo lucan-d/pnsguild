@@ -548,7 +548,8 @@ def rewards_page(req, srv, eid):
             counts[r["color"]] = counts.get(r["color"], 0) + 1
     summary = "／".join("%s %d/%d" % (i18n.t(l), counts.get(k, 0), n)
                         for k, l, n in REWARD_COLORS)
-    hint = '<p class="hint">%s</p>' % i18n.t("priority_hint", summary=h(summary))
+    hint = '<p class="caution">%s</p>' % i18n.t("rewards_disclaimer")
+    hint += '<p class="hint">%s</p>' % i18n.t("priority_hint", summary=h(summary))
     if sess:
         hint += '<p class="hint">%s</p>' % i18n.t("reward_edit_hint")
     else:
